@@ -76,8 +76,6 @@ class Zend_Service_Audioscrobbler
             iconv_set_encoding('input_encoding', 'UTF-8');
             iconv_set_encoding('internal_encoding', 'UTF-8');
         } else {
-            ini_set('output_encoding', 'UTF-8');
-            ini_set('input_encoding', 'UTF-8');
             ini_set('default_charset', 'UTF-8');
         }
     }
