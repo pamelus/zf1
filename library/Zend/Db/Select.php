@@ -80,6 +80,7 @@ class Zend_Db_Select
     const SQL_ON         = 'ON';
     const SQL_ASC        = 'ASC';
     const SQL_DESC       = 'DESC';
+	const SQL_USE_INDEX  = 'USE INDEX';
 
     const REGEX_COLUMN_EXPR       = '/^([\w]*\s*\(([^\(\)]|(?1))*\))$/';
     const REGEX_COLUMN_EXPR_ORDER = '/^([\w]+\s*\(([^\(\)]|(?1))*\))$/';
@@ -251,16 +252,48 @@ class Zend_Db_Select
         return $this->_join(self::FROM, $name, null, $cols, $schema);
     }
 
-    /**
-     * Specifies the columns used in the FROM clause.
-     *
-     * The parameter can be a single string or Zend_Db_Expr object,
-     * or else an array of strings or Zend_Db_Expr objects.
-     *
-     * @param  array|string|Zend_Db_Expr $cols The columns to select from this table.
-     * @param  string $correlationName Correlation name of target table. OPTIONAL
-     * @return static This Zend_Db_Select object.
-     */
+	/**
+	 * Force SQL engine to use specified index(es) when querying
+	 * given correlation.
+	 *
+	 * @param $indexes index name or array of indexes
+	 * @param null $correlationName
+	 * @return static
+	 * @throws Zend_Db_Select_Exception
+	 */
+	public function useIndex($indexes, $correlationName = null)
+	{
+		if ($correlationName === null && count($this->_parts[self::FROM])) {
+			$correlationNameKeys = array_keys($this->_parts[self::FROM]);
+			$correlationName = current($correlationNameKeys);
+		}
+
+		if (!array_key_exists($correlationName, $this->_parts[self::FROM])) {
+			/**
+			 * @see Zend_Db_Select_Exception
+			 */
+			throw new Zend_Db_Select_Exception("No table has been specified for the USE INDEX clause");
+		}
+
+		if (!is_array($indexes)) {
+			$indexes = array($indexes);
+		}
+
+		$this->_parts[self::FROM][$correlationName]['useIndex'] = $indexes;
+		return $this;
+	}
+
+	/**
+	 * Specifies the columns used in the FROM clause.
+	 *
+	 * The parameter can be a single string or Zend_Db_Expr object,
+	 * or else an array of strings or Zend_Db_Expr objects.
+	 *
+	 * @param  array|string|Zend_Db_Expr $cols The columns to select from this table.
+	 * @param  string $correlationName Correlation name of target table. OPTIONAL
+	 * @return static This Zend_Db_Select object.
+	 * @throws Zend_Db_Select_Exception
+	 */
     public function columns($cols = '*', $correlationName = null)
     {
         if ($correlationName === null && count($this->_parts[self::FROM])) {
@@ -281,23 +314,25 @@ class Zend_Db_Select
         return $this;
     }
 
-    /**
-     * Adds a UNION clause to the query.
-     *
-     * The first parameter has to be an array of Zend_Db_Select or
-     * sql query strings.
-     *
-     * <code>
-     * $sql1 = $db->select();
-     * $sql2 = "SELECT ...";
-     * $select = $db->select()
-     *      ->union(array($sql1, $sql2))
-     *      ->order("id");
-     * </code>
-     *
-     * @param  array $select Array of select clauses for the union.
-     * @return static This Zend_Db_Select object.
-     */
+	/**
+	 * Adds a UNION clause to the query.
+	 *
+	 * The first parameter has to be an array of Zend_Db_Select or
+	 * sql query strings.
+	 *
+	 * <code>
+	 * $sql1 = $db->select();
+	 * $sql2 = "SELECT ...";
+	 * $select = $db->select()
+	 *      ->union(array($sql1, $sql2))
+	 *      ->order("id");
+	 * </code>
+	 *
+	 * @param  array $select Array of select clauses for the union.
+	 * @param string $type
+	 * @return static This Zend_Db_Select object.
+	 * @throws Zend_Db_Select_Exception
+	 */
     public function union($select = array(), $type = self::SQL_UNION)
     {
         if (!is_array($select)) {
@@ -1155,6 +1190,11 @@ class Zend_Db_Select
 
             $tmp .= $this->_getQuotedSchema($table['schema']);
             $tmp .= $this->_getQuotedTable($table['tableName'], $correlationName);
+
+            // Add use index conditions (if applicable)
+			if(array_key_exists('useIndex', $table) && !empty($table['useIndex'])) {
+				$tmp .= ' ' . self::SQL_USE_INDEX . ' (' . implode(',', $table['useIndex']) . ')';
+			}
 
             // Add join conditions (if applicable)
             if (!empty($from) && ! empty($table['joinCondition'])) {
