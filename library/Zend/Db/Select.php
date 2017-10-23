@@ -256,7 +256,7 @@ class Zend_Db_Select
 	 * Force SQL engine to use specified index(es) when querying
 	 * given correlation.
 	 *
-	 * @param $indexes index name or array of indexes
+	 * @param string | string[] $indexes index name or array of indexes
 	 * @param null $correlationName
 	 * @return static
 	 * @throws Zend_Db_Select_Exception
