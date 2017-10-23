@@ -257,7 +257,7 @@ class Zend_Db_Select
 	 * given correlation.
 	 *
 	 * @param string | string[] $indexes index name or array of indexes
-	 * @param null $correlationName
+	 * @param string | null $correlationName
 	 * @return static
 	 * @throws Zend_Db_Select_Exception
 	 */
